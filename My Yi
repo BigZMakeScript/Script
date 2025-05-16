@@ -1,0 +1,194 @@
+-- MyUILibrary.lua (bạn có thể lưu trên Pastebin hoặc local script)
+local MyUILibrary = {}
+
+local UIS = game:GetService("UserInputService")
+
+local function makeUICorner(parent, radius)
+	local corner = Instance.new("UICorner", parent)
+	corner.CornerRadius = UDim.new(0, radius or 8)
+	return corner
+end
+
+function MyUILibrary:CreateWindow(titleText)
+	local gui = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("PlayerGui"))
+	gui.Name = "MyCustomUILib"
+	gui.ResetOnSpawn = false
+
+	local toggleKey = Enum.KeyCode.RightControl
+	local visible = true
+
+	UIS.InputBegan:Connect(function(input, gpe)
+		if not gpe and input.KeyCode == toggleKey then
+			visible = not visible
+			gui.Enabled = visible
+		end
+	end)
+
+	local main = Instance.new("Frame", gui)
+	main.Size = UDim2.new(0, 520, 0, 400)
+	main.Position = UDim2.new(0.5, -260, 0.5, -200)
+	main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	main.BorderSizePixel = 0
+	makeUICorner(main)
+
+	local title = Instance.new("TextLabel", main)
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.BackgroundTransparency = 1
+	title.Text = titleText
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 20
+	title.TextColor3 = Color3.new(1, 1, 1)
+
+	local tabButtons = Instance.new("Frame", main)
+	tabButtons.Size = UDim2.new(0, 130, 1, -40)
+	tabButtons.Position = UDim2.new(0, 0, 0, 40)
+	tabButtons.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	makeUICorner(tabButtons, 0)
+
+	local tabHolder = Instance.new("Frame", main)
+	tabHolder.Size = UDim2.new(1, -130, 1, -40)
+	tabHolder.Position = UDim2.new(0, 130, 0, 40)
+	tabHolder.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	makeUICorner(tabHolder, 0)
+
+	local tabBtnLayout = Instance.new("UIListLayout", tabButtons)
+	tabBtnLayout.Padding = UDim.new(0, 4)
+
+	local tabs = {}
+
+	function tabs:AddTab(tabName)
+		local tabBtn = Instance.new("TextButton", tabButtons)
+		tabBtn.Size = UDim2.new(1, 0, 0, 35)
+		tabBtn.Text = tabName
+		tabBtn.Font = Enum.Font.Gotham
+		tabBtn.TextSize = 14
+		tabBtn.TextColor3 = Color3.new(1,1,1)
+		tabBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+		makeUICorner(tabBtn)
+
+		local tabContent = Instance.new("ScrollingFrame", tabHolder)
+		tabContent.Size = UDim2.new(1, 0, 1, 0)
+		tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+		tabContent.BackgroundTransparency = 1
+		tabContent.ScrollBarThickness = 5
+		tabContent.Visible = false
+
+		local layout = Instance.new("UIListLayout", tabContent)
+		layout.Padding = UDim.new(0, 6)
+
+		tabBtn.MouseButton1Click:Connect(function()
+			for _, child in ipairs(tabHolder:GetChildren()) do
+				if child:IsA("ScrollingFrame") then
+					child.Visible = false
+				end
+			end
+			tabContent.Visible = true
+		end)
+
+		local api = {}
+
+		function api:AddButton(text, callback)
+			local btn = Instance.new("TextButton", tabContent)
+			btn.Size = UDim2.new(1, -20, 0, 30)
+			btn.Position = UDim2.new(0, 10, 0, 0)
+			btn.Text = text
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 14
+			btn.TextColor3 = Color3.new(1, 1, 1)
+			btn.BackgroundColor3 = Color3.fromRGB(60, 120, 180)
+			makeUICorner(btn)
+			btn.MouseButton1Click:Connect(callback)
+		end
+
+		function api:AddToggle(text, default, callback)
+			local toggle = Instance.new("TextButton", tabContent)
+			toggle.Size = UDim2.new(1, -20, 0, 30)
+			toggle.Position = UDim2.new(0, 10, 0, 0)
+			toggle.Font = Enum.Font.Gotham
+			toggle.TextSize = 14
+			toggle.TextColor3 = Color3.new(1, 1, 1)
+
+			local state = default
+			toggle.Text = text .. ": " .. tostring(state)
+			toggle.BackgroundColor3 = state and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
+			makeUICorner(toggle)
+
+			toggle.MouseButton1Click:Connect(function()
+				state = not state
+				toggle.Text = text .. ": " .. tostring(state)
+				toggle.BackgroundColor3 = state and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
+				callback(state)
+			end)
+		end
+
+		function api:AddDropdown(name, options, callback)
+			local btn = Instance.new("TextButton", tabContent)
+			btn.Size = UDim2.new(1, -20, 0, 30)
+			btn.Text = name .. ": (Click)"
+			btn.TextColor3 = Color3.new(1,1,1)
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 14
+			btn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+			makeUICorner(btn)
+
+			btn.MouseButton1Click:Connect(function()
+				local chosen = options[math.random(1, #options)]
+				btn.Text = name .. ": " .. chosen
+				callback(chosen)
+			end)
+		end
+
+		function api:AddTextBox(placeholder, callback)
+			local box = Instance.new("TextBox", tabContent)
+			box.Size = UDim2.new(1, -20, 0, 30)
+			box.PlaceholderText = placeholder
+			box.Text = ""
+			box.Font = Enum.Font.Gotham
+			box.TextSize = 14
+			box.TextColor3 = Color3.new(1,1,1)
+			box.BackgroundColor3 = Color3.fromRGB(80,80,80)
+			makeUICorner(box)
+
+			box.FocusLost:Connect(function()
+				callback(box.Text)
+			end)
+		end
+
+		function api:AddKeybind(labelText, callback)
+			local keybind = Enum.KeyCode.Unknown
+			local btn = Instance.new("TextButton", tabContent)
+			btn.Size = UDim2.new(1, -20, 0, 30)
+			btn.Text = labelText .. ": [None]"
+			btn.TextColor3 = Color3.new(1,1,1)
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 14
+			btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+			makeUICorner(btn)
+
+			btn.MouseButton1Click:Connect(function()
+				btn.Text = labelText .. ": [Press Key]"
+				local conn
+				conn = UIS.InputBegan:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.Keyboard then
+						keybind = input.KeyCode
+						btn.Text = labelText .. ": [" .. keybind.Name .. "]"
+						callback(keybind)
+						conn:Disconnect()
+					end
+				end)
+			end)
+
+			UIS.InputBegan:Connect(function(input)
+				if input.KeyCode == keybind then
+					callback(keybind)
+				end
+			end)
+		end
+
+		return api
+	end
+
+	return tabs
+end
+
+return MyUILibrary
