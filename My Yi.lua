@@ -13,7 +13,21 @@ function MyUILibrary:CreateWindow(titleText)
 	local gui = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("PlayerGui"))
 	gui.Name = "MyCustomUILib"
 	gui.ResetOnSpawn = false
+        local toggleButton = Instance.new("TextButton", gui)
+        toggleButton.Size = UDim2.new(0, 100, 0, 35)
+        toggleButton.Position = UDim2.new(0, 0, 0.45, 0)
+        toggleButton.Text = "Toggle UI"
+        toggleButton.Font = Enum.Font.Gotham
+        toggleButton.TextSize = 14
+        toggleButton.TextColor3 = Color3.new(1, 1, 1)
+        toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        makeUICorner(toggleButton)
+        local visible = true
 
+        toggleButton.MouseButton1Click:Connect(function()
+	visible = not visible
+	main.Visible = visible
+end)
 	local toggleKey = Enum.KeyCode.RightControl
 	local visible = true
 
@@ -25,11 +39,13 @@ function MyUILibrary:CreateWindow(titleText)
 	end)
 
 	local main = Instance.new("Frame", gui)
-	main.Size = UDim2.new(0, 520, 0, 400)
-	main.Position = UDim2.new(0.5, -260, 0.5, -200)
-	main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-	main.BorderSizePixel = 0
-	makeUICorner(main)
+        main.Name = "MainUI"
+        main.Visible = true -- Mặc định hiển thị
+        main.Size = UDim2.new(0, 520, 0, 400)
+        main.Position = UDim2.new(0.5, -260, 0.5, -200)
+        main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        main.BorderSizePixel = 0
+        makeUICorner(main)
 
 	local title = Instance.new("TextLabel", main)
 	title.Size = UDim2.new(1, 0, 0, 40)
