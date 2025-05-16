@@ -1,211 +1,460 @@
--- Rice Mode UI Library local RiceUI = {}
+-- Rice Mode UI Library
+-- Full-featured and mobile-friendly UI system
 
--- Configurable Theme RiceUI.Theme = { Primary = Color3.fromRGB(85, 170, 255), Secondary = Color3.fromRGB(40, 40, 40), Background = Color3.fromRGB(25, 25, 25), TextColor = Color3.fromRGB(255, 255, 255) }
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 
--- Services local Players = game:GetService("Players") local LocalPlayer = Players.LocalPlayer local UserInputService = game:GetService("UserInputService") local TweenService = game:GetService("TweenService")
+local Themes = {
+    Dark = {
+        Background = Color3.fromRGB(25, 25, 25),
+        Accent = Color3.fromRGB(0, 170, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(50, 50, 50),
+    },
+    Light = {
+        Background = Color3.fromRGB(245, 245, 245),
+        Accent = Color3.fromRGB(0, 120, 215),
+        Text = Color3.fromRGB(0, 0, 0),
+        Border = Color3.fromRGB(200, 200, 200),
+    },
+    Aqua = {
+        Background = Color3.fromRGB(30, 40, 50),
+        Accent = Color3.fromRGB(0, 255, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(60, 70, 80),
+    },
+    Blood = {
+        Background = Color3.fromRGB(40, 0, 0),
+        Accent = Color3.fromRGB(255, 0, 0),
+        Text = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(80, 0, 0),
+    }
+}
 
--- UI Creation Helper local function create(class, props) local inst = Instance.new(class) for i, v in pairs(props) do inst[i] = v end return inst end
+local function SaveConfig(name, data)
+    if isfile and writefile then
+        writefile(name.."_config.json", HttpService:JSONEncode(data))
+    end
+end
 
--- Main UI Container function RiceUI:CreateWindow(title) local ScreenGui = create("ScreenGui", { Name = "RiceModeUI", ResetOnSpawn = false, Parent = game:GetService("CoreGui") })
+local function LoadConfig(name)
+    if isfile and readfile and isfile(name.."_config.json") then
+        return HttpService:JSONDecode(readfile(name.."_config.json"))
+    end
+    return {}
+end
 
-local ToggleButton = create("TextButton", {
-    Parent = ScreenGui,
-    Size = UDim2.new(0, 100, 0, 30),
-    Position = UDim2.new(0, 10, 0, 10),
-    Text = "Toggle UI",
-    BackgroundColor3 = RiceUI.Theme.Primary,
-    TextColor3 = RiceUI.Theme.TextColor
-})
+local RiceMode = {}
+function RiceMode:CreateWindow(cfg)
+    cfg = cfg or {}
+    local Theme = Themes[cfg.Theme or "Dark"] or Themes.Dark
+    local SaveEnabled = cfg.SaveConfig
+    local SaveData = LoadConfig(cfg.Name or "RiceMode")
 
-local MainFrame = create("Frame", {
-    Parent = ScreenGui,
-    Size = UDim2.new(0, 450, 0, 300),
-    Position = UDim2.new(0.5, -225, 0.5, -150),
-    BackgroundColor3 = RiceUI.Theme.Background,
-    Visible = true
-})
+    local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    ScreenGui.Name = "RiceModeUI"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-create("UICorner", {Parent = MainFrame})
+    local Holder = Instance.new("Frame", ScreenGui)
+    Holder.Size = UDim2.new(0, 500, 0, 350)
+    Holder.Position = UDim2.new(0.5, -250, 0.5, -175)
+    Holder.BackgroundColor3 = Theme.Background
+    Holder.BorderColor3 = Theme.Border
+    Holder.BorderSizePixel = 2
+    Holder.Name = "Holder"
 
-ToggleButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
+    local UICorner = Instance.new("UICorner", Holder)
+    UICorner.CornerRadius = UDim.new(0, 10)
 
-local TabsHolder = create("Frame", {
-    Parent = MainFrame,
-    Size = UDim2.new(0, 100, 1, 0),
-    BackgroundColor3 = RiceUI.Theme.Secondary
-})
+    local DragToggle = false
+    local DragInput, MousePos, FramePos
 
-create("UICorner", {Parent = TabsHolder})
-
-local Pages = {}
-local Tabs = {}
-
-function RiceUI:CreateTab(tabName)
-    local TabButton = create("TextButton", {
-        Parent = TabsHolder,
-        Size = UDim2.new(1, 0, 0, 30),
-        Text = tabName,
-        BackgroundColor3 = RiceUI.Theme.Primary,
-        TextColor3 = RiceUI.Theme.TextColor
-    })
-
-    local Page = create("ScrollingFrame", {
-        Parent = MainFrame,
-        Size = UDim2.new(1, -110, 1, -10),
-        Position = UDim2.new(0, 110, 0, 5),
-        BackgroundTransparency = 1,
-        Visible = false,
-        ScrollBarThickness = 4,
-        CanvasSize = UDim2.new(0, 0, 2, 0)
-    })
-
-    local UIListLayout = create("UIListLayout", {
-        Parent = Page,
-        Padding = UDim.new(0, 6)
-    })
-
-    TabButton.MouseButton1Click:Connect(function()
-        for _, pg in pairs(Pages) do pg.Visible = false end
-        Page.Visible = true
+    Holder.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            DragToggle = true
+            MousePos = input.Position
+            FramePos = Holder.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    DragToggle = false
+                end
+            end)
+        end
     end)
 
-    table.insert(Pages, Page)
-    Tabs[tabName] = Page
+    UserInputService.InputChanged:Connect(function(input)
+        if DragToggle and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - MousePos
+            Holder.Position = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + delta.X, FramePos.Y.Scale, FramePos.Y.Offset + delta.Y)
+        end
+    end)
 
-    local tabAPI = {}
+    local Tabs = {}
 
-    function tabAPI:Button(text, callback)
-        local btn = create("TextButton", {
-            Parent = Page,
-            Size = UDim2.new(1, -10, 0, 30),
-            Text = text,
-            BackgroundColor3 = RiceUI.Theme.Primary,
-            TextColor3 = RiceUI.Theme.TextColor
-        })
-        btn.MouseButton1Click:Connect(callback)
+    function Tabs:CreateTab(name)
+        local tab = Instance.new("Frame", Holder)
+        tab.Size = UDim2.new(1, -20, 1, -60)
+        tab.Position = UDim2.new(0, 10, 0, 50)
+        tab.BackgroundTransparency = 1
+        tab.Name = name:gsub(" ", "")
+
+        local layout = Instance.new("UIListLayout", tab)
+        layout.Padding = UDim.new(0, 6)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local elements = {}
+
+        function elements:CreateButton(text, callback)
+            local btn = Instance.new("TextButton", tab)
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.Text = text
+            btn.BackgroundColor3 = Theme.Accent
+            btn.TextColor3 = Theme.Text
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = 14
+            btn.MouseButton1Click:Connect(callback)
+        end
+
+        function elements:CreateToggle(text, default, callback)
+            local toggle = Instance.new("TextButton", tab)
+            toggle.Size = UDim2.new(1, 0, 0, 30)
+            toggle.Text = text
+            toggle.BackgroundColor3 = default and Theme.Accent or Theme.Border
+            toggle.TextColor3 = Theme.Text
+            toggle.Font = Enum.Font.Gotham
+            toggle.TextSize = 14
+            toggle.MouseButton1Click:Connect(function()
+                default = not default
+                toggle.BackgroundColor3 = default and Theme.Accent or Theme.Border
+                callback(default)
+                if SaveEnabled then SaveData[text] = default SaveConfig(cfg.Name, SaveData) end
+            end)
+        end
+
+        function elements:CreateSlider(text, min, max, default, callback)
+            local frame = Instance.new("Frame", tab)
+            frame.Size = UDim2.new(1, 0, 0, 40)
+            frame.BackgroundTransparency = 1
+
+            local label = Instance.new("TextLabel", frame)
+            label.Size = UDim2.new(1, 0, 0, 20)
+            label.Text = text .. ": " .. tostring(default)
+            label.TextColor3 = Theme.Text
+            label.BackgroundTransparency = 1
+            label.Font = Enum.Font.Gotham
+            label.TextSize = 14
+
+            local slider = Instance.new("TextButton", frame)
+            slider.Size = UDim2.new(1, 0, 0, 15)
+            slider.Position = UDim2.new(0, 0, 0, 25)
+            slider.BackgroundColor3 = Theme.Border
+            slider.Text = ""
+
+            local fill = Instance.new("Frame", slider)
+            fill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
+            fill.BackgroundColor3 = Theme.Accent
+            fill.BorderSizePixel = 0
+
+            slider.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    local conn
+                    conn = UserInputService.InputChanged:Connect(function(move)
+                        if move.UserInputType == Enum.UserInputType.MouseMovement or move.UserInputType == Enum.UserInputType.Touch then
+                            local pos = move.Position.X - slider.AbsolutePosition.X
+                            local pct = math.clamp(pos / slider.AbsoluteSize.X, 0, 1)
+                            fill.Size = UDim2.new(pct, 0, 1, 0)
+                            local val = math.floor(min + (max - min) * pct)
+                            label.Text = text .. ": " .. tostring(val)
+                            callback(val)
+                        end
+                    end)
+                    input.Changed:Connect(function()
+                        if input.UserInputState == Enum.UserInputState.End then
+                            conn:Disconnect()
+                        end
+                    end)
+                end
+            end)
+        end
+
+        function elements:CreateTextBox(placeholder, callback)
+            local box = Instance.new("TextBox", tab)
+            box.Size = UDim2.new(1, 0, 0, 30)
+            box.PlaceholderText = placeholder
+            box.Text = ""
+            box.Font = Enum.Font.Gotham
+            box.TextSize = 14
+            box.BackgroundColor3 = Theme.Border
+            box.TextColor3 = Theme.Text
+            box.FocusLost:Connect(function()
+                callback(box.Text)
+                if SaveEnabled then SaveData[placeholder] = box.Text SaveConfig(cfg.Name, SaveData) end
+            end)
+        end
+
+        function elements:CreateDropdown(text, options, callback)
+            local btn = Instance.new("TextButton", tab)
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.Text = text
+            btn.BackgroundColor3 = Theme.Border
+            btn.TextColor3 = Theme.Text
+            btn.Font = Enum.Font.Gotham
+            btn.TextSize = 14
+
+            btn.MouseButton1Click:Connect(function()
+                for _, opt in ipairs(options) do
+                    local optBtn = Instance.new("TextButton", tab)
+                    optBtn.Size = UDim2.new(1, 0, 0, 25)
+                    optBtn.Text = "- " .. opt
+                    optBtn.BackgroundColor3 = Theme.Accent
+                    optBtn.TextColor3 = Theme.Text
+                    optBtn.Font = Enum.Font.Gotham
+                    optBtn.TextSize = 13
+                    optBtn.MouseButton1Click:Connect(function()
+                        callback(opt)
+                        for _, child in pairs(tab:GetChildren()) do
+                            if child:IsA("TextButton") and child.Text:match("%- ") then child:Destroy() end
+                        end
+                    end)
+                end
+            end)
+        end
+
+        return elements
     end
 
-    function tabAPI:Toggle(text, callback)
-        local state = false
-        local toggle = create("TextButton", {
-            Parent = Page,
-            Size = UDim2.new(1, -10, 0, 30),
-            Text = text .. ": OFF",
-            BackgroundColor3 = RiceUI.Theme.Secondary,
-            TextColor3 = RiceUI.Theme.TextColor
-        })
-        toggle.MouseButton1Click:Connect(function()
-            state = not state
-            toggle.Text = text .. (state and ": ON" or ": OFF")
-            callback(state)
-        end)
-    end
-
-    function tabAPI:Slider(text, min, max, default, callback)
-        local sliderFrame = create("Frame", {
-            Parent = Page,
-            Size = UDim2.new(1, -10, 0, 40),
-            BackgroundColor3 = RiceUI.Theme.Secondary
-        })
-        create("UICorner", {Parent = sliderFrame})
-
-        local label = create("TextLabel", {
-            Parent = sliderFrame,
-            Size = UDim2.new(1, 0, 0, 20),
-            Text = text .. ": " .. tostring(default),
-            BackgroundTransparency = 1,
-            TextColor3 = RiceUI.Theme.TextColor
-        })
-
-        local bar = create("Frame", {
-            Parent = sliderFrame,
-            Size = UDim2.new(1, -20, 0, 10),
-            Position = UDim2.new(0, 10, 0, 25),
-            BackgroundColor3 = RiceUI.Theme.Primary
-        })
-
-        create("UICorner", {Parent = bar})
-
-        local dragging = false
-        local current = default
-
-        bar.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-            end
-        end)
-
-        UserInputService.InputEnded:Connect(function(input)
-            dragging = false
-        end)
-
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.Position then
-                local rel = input.Position.X - bar.AbsolutePosition.X
-                local percent = math.clamp(rel / bar.AbsoluteSize.X, 0, 1)
-                current = math.floor((max - min) * percent + min)
-                label.Text = text .. ": " .. tostring(current)
-                callback(current)
-            end
-        end)
-    end
-
-    function tabAPI:Textbox(text, callback)
-        local box = create("TextBox", {
-            Parent = Page,
-            Size = UDim2.new(1, -10, 0, 30),
-            Text = text,
-            BackgroundColor3 = RiceUI.Theme.Secondary,
-            TextColor3 = RiceUI.Theme.TextColor
-        })
-        box.FocusLost:Connect(function()
-            callback(box.Text)
-        end)
-    end
-
-    function tabAPI:Dropdown(text, options, callback)
-        local selected = options[1]
-        local dropdown = create("TextButton", {
-            Parent = Page,
-            Size = UDim2.new(1, -10, 0, 30),
-            Text = text .. ": " .. selected,
-            BackgroundColor3 = RiceUI.Theme.Secondary,
-            TextColor3 = RiceUI.Theme.TextColor
-        })
-
-        dropdown.MouseButton1Click:Connect(function()
-            local menu = create("Frame", {
-                Parent = dropdown,
-                Position = UDim2.new(0, 0, 1, 0),
-                Size = UDim2.new(1, 0, 0, #options * 30),
-                BackgroundColor3 = RiceUI.Theme.Secondary
-            })
-            for _, opt in pairs(options) do
-                local optBtn = create("TextButton", {
-                    Parent = menu,
-                    Size = UDim2.new(1, 0, 0, 30),
-                    Text = opt,
-                    BackgroundColor3 = RiceUI.Theme.Secondary,
-                    TextColor3 = RiceUI.Theme.TextColor
-                })
-                optBtn.MouseButton1Click:Connect(function()
-                    selected = opt
-                    dropdown.Text = text .. ": " .. selected
-                    menu:Destroy()
-                    callback(selected)
-                end)
-            end
-        end)
-    end
-
-    return tabAPI
+    return Tabs
 end
 
-return RiceUI
+return RiceMode
+-- Rice Mode UI Library
+-- Full-featured and mobile-friendly UI system
 
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+local Themes = {
+    Dark = {
+        Background = Color3.fromRGB(25, 25, 25),
+        Accent = Color3.fromRGB(0, 170, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(50, 50, 50),
+    },
+    Light = {
+        Background = Color3.fromRGB(245, 245, 245),
+        Accent = Color3.fromRGB(0, 120, 215),
+        Text = Color3.fromRGB(0, 0, 0),
+        Border = Color3.fromRGB(200, 200, 200),
+    },
+    Aqua = {
+        Background = Color3.fromRGB(30, 40, 50),
+        Accent = Color3.fromRGB(0, 255, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(60, 70, 80),
+    },
+    Blood = {
+        Background = Color3.fromRGB(40, 0, 0),
+        Accent = Color3.fromRGB(255, 0, 0),
+        Text = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(80, 0, 0),
+    }
+}
+
+local function SaveConfig(name, data)
+    if isfile and writefile then
+        writefile(name.."_config.json", HttpService:JSONEncode(data))
+    end
 end
 
-return RiceUI
+local function LoadConfig(name)
+    if isfile and readfile and isfile(name.."_config.json") then
+        return HttpService:JSONDecode(readfile(name.."_config.json"))
+    end
+    return {}
+end
 
+local RiceMode = {}
+function RiceMode:CreateWindow(cfg)
+    cfg = cfg or {}
+    local Theme = Themes[cfg.Theme or "Dark"] or Themes.Dark
+    local SaveEnabled = cfg.SaveConfig
+    local SaveData = LoadConfig(cfg.Name or "RiceMode")
+
+    local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    ScreenGui.Name = "RiceModeUI"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local Holder = Instance.new("Frame", ScreenGui)
+    Holder.Size = UDim2.new(0, 500, 0, 350)
+    Holder.Position = UDim2.new(0.5, -250, 0.5, -175)
+    Holder.BackgroundColor3 = Theme.Background
+    Holder.BorderColor3 = Theme.Border
+    Holder.BorderSizePixel = 2
+    Holder.Name = "Holder"
+
+    local UICorner = Instance.new("UICorner", Holder)
+    UICorner.CornerRadius = UDim.new(0, 10)
+
+    local DragToggle = false
+    local DragInput, MousePos, FramePos
+
+    Holder.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            DragToggle = true
+            MousePos = input.Position
+            FramePos = Holder.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    DragToggle = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if DragToggle and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - MousePos
+            Holder.Position = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + delta.X, FramePos.Y.Scale, FramePos.Y.Offset + delta.Y)
+        end
+    end)
+
+    local Tabs = {}
+
+    function Tabs:CreateTab(name)
+        local tab = Instance.new("Frame", Holder)
+        tab.Size = UDim2.new(1, -20, 1, -60)
+        tab.Position = UDim2.new(0, 10, 0, 50)
+        tab.BackgroundTransparency = 1
+        tab.Name = name:gsub(" ", "")
+
+        local layout = Instance.new("UIListLayout", tab)
+        layout.Padding = UDim.new(0, 6)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local elements = {}
+
+        function elements:CreateButton(text, callback)
+            local btn = Instance.new("TextButton", tab)
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.Text = text
+            btn.BackgroundColor3 = Theme.Accent
+            btn.TextColor3 = Theme.Text
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = 14
+            btn.MouseButton1Click:Connect(callback)
+        end
+
+        function elements:CreateToggle(text, default, callback)
+            local toggle = Instance.new("TextButton", tab)
+            toggle.Size = UDim2.new(1, 0, 0, 30)
+            toggle.Text = text
+            toggle.BackgroundColor3 = default and Theme.Accent or Theme.Border
+            toggle.TextColor3 = Theme.Text
+            toggle.Font = Enum.Font.Gotham
+            toggle.TextSize = 14
+            toggle.MouseButton1Click:Connect(function()
+                default = not default
+                toggle.BackgroundColor3 = default and Theme.Accent or Theme.Border
+                callback(default)
+                if SaveEnabled then SaveData[text] = default SaveConfig(cfg.Name, SaveData) end
+            end)
+        end
+
+        function elements:CreateSlider(text, min, max, default, callback)
+            local frame = Instance.new("Frame", tab)
+            frame.Size = UDim2.new(1, 0, 0, 40)
+            frame.BackgroundTransparency = 1
+
+            local label = Instance.new("TextLabel", frame)
+            label.Size = UDim2.new(1, 0, 0, 20)
+            label.Text = text .. ": " .. tostring(default)
+            label.TextColor3 = Theme.Text
+            label.BackgroundTransparency = 1
+            label.Font = Enum.Font.Gotham
+            label.TextSize = 14
+
+            local slider = Instance.new("TextButton", frame)
+            slider.Size = UDim2.new(1, 0, 0, 15)
+            slider.Position = UDim2.new(0, 0, 0, 25)
+            slider.BackgroundColor3 = Theme.Border
+            slider.Text = ""
+
+            local fill = Instance.new("Frame", slider)
+            fill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
+            fill.BackgroundColor3 = Theme.Accent
+            fill.BorderSizePixel = 0
+
+            slider.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    local conn
+                    conn = UserInputService.InputChanged:Connect(function(move)
+                        if move.UserInputType == Enum.UserInputType.MouseMovement or move.UserInputType == Enum.UserInputType.Touch then
+                            local pos = move.Position.X - slider.AbsolutePosition.X
+                            local pct = math.clamp(pos / slider.AbsoluteSize.X, 0, 1)
+                            fill.Size = UDim2.new(pct, 0, 1, 0)
+                            local val = math.floor(min + (max - min) * pct)
+                            label.Text = text .. ": " .. tostring(val)
+                            callback(val)
+                        end
+                    end)
+                    input.Changed:Connect(function()
+                        if input.UserInputState == Enum.UserInputState.End then
+                            conn:Disconnect()
+                        end
+                    end)
+                end
+            end)
+        end
+
+        function elements:CreateTextBox(placeholder, callback)
+            local box = Instance.new("TextBox", tab)
+            box.Size = UDim2.new(1, 0, 0, 30)
+            box.PlaceholderText = placeholder
+            box.Text = ""
+            box.Font = Enum.Font.Gotham
+            box.TextSize = 14
+            box.BackgroundColor3 = Theme.Border
+            box.TextColor3 = Theme.Text
+            box.FocusLost:Connect(function()
+                callback(box.Text)
+                if SaveEnabled then SaveData[placeholder] = box.Text SaveConfig(cfg.Name, SaveData) end
+            end)
+        end
+
+        function elements:CreateDropdown(text, options, callback)
+            local btn = Instance.new("TextButton", tab)
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.Text = text
+            btn.BackgroundColor3 = Theme.Border
+            btn.TextColor3 = Theme.Text
+            btn.Font = Enum.Font.Gotham
+            btn.TextSize = 14
+
+            btn.MouseButton1Click:Connect(function()
+                for _, opt in ipairs(options) do
+                    local optBtn = Instance.new("TextButton", tab)
+                    optBtn.Size = UDim2.new(1, 0, 0, 25)
+                    optBtn.Text = "- " .. opt
+                    optBtn.BackgroundColor3 = Theme.Accent
+                    optBtn.TextColor3 = Theme.Text
+                    optBtn.Font = Enum.Font.Gotham
+                    optBtn.TextSize = 13
+                    optBtn.MouseButton1Click:Connect(function()
+                        callback(opt)
+                        for _, child in pairs(tab:GetChildren()) do
+                            if child:IsA("TextButton") and child.Text:match("%- ") then child:Destroy() end
+                        end
+                    end)
+                end
+            end)
+        end
+
+        return elements
+    end
+
+    return Tabs
+end
+
+return RiceMode
