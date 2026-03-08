@@ -1,7 +1,7 @@
 const mineflayer = require('mineflayer')
 
 // Cấu hình địa chỉ server của bạn
-const SERVER_ADDR = 'stratos.pikamc.vn:26487';
+const SERVER_ADDR = 'Legendsmp.site:26009';
 
 const CONFIG = {
     host: SERVER_ADDR.split(':')[0], 
